@@ -143,7 +143,7 @@ const SideBar = () => {
       </nav>
 
       {/* Bottom Section - Optional Tupoints Integration */}
-      <div className="px-6 pb-6">
+      {/* <div className="px-6 pb-6">
         <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 border border-white/20">
           <div className="flex items-center gap-3">
             <div className="bg-gradient-to-r from-yellow-400 to-orange-500 p-2 rounded-lg">
@@ -161,7 +161,7 @@ const SideBar = () => {
             </Link>
           </div>
         </div>
-      </div>
+      </div> */}
     </aside>
   );
 };

@@ -70,7 +70,7 @@ export const fuelOffers: FuelOffer[] = [
     category: "limited",
     isQualified: false,
     partnerName: "Stabex International",
-    partnerLogo: "/images/stabex-logo.jpg",
+    partnerLogo: "/media/stabex.png",
     discount: 20,
     maxSavings: 75000,
     expiryDate: "2024-10-15",
