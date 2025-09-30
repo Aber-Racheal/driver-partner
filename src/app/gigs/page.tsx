@@ -15,6 +15,7 @@ import {
     Tag,
 } from "lucide-react";
 import Link from "next/link";
+import { calculateGigStatus, getStatusStyling, sortGigsByStatusPriority } from "@/utils/gigStatusUtils";
 import { calculateTimeAgo } from "@/utils/calculateTimeAgo";
 import SideBar from "../components/SideBar";
 import { gigs as allGigs } from "@/data/gigsData";
@@ -22,12 +23,38 @@ import SearchBar from "../components/SearchBar";
 import { useState, useMemo, useEffect } from "react";
 import LoadingSpinner from "../components/LoadingSpinner";
 
+// Type definitions with defaults
+interface GigStatusInfo {
+    status: 'NEW' | 'OPEN' | 'URGENT' | 'CLOSING SOON' | 'CLOSED';
+    statusColor: string;
+    priority: number;
+    daysSincePosted: number;
+    daysUntilDeadline: number;
+    isActive: boolean;
+}
+
+interface FilterOptions {
+    types: string[];
+    statuses: string[];
+    locations: string[];
+}
+
+interface StatusCounts {
+    NEW: number;
+    OPEN: number;
+    URGENT: number;
+    'CLOSING SOON': number;
+    CLOSED: number;
+}
+
+import { Filters, Gig } from "../types/gigs";
+
 const GIGS_PER_PAGE = 5;
 
 export default function GigsPage() {
-    const [searchTerm, setSearchTerm] = useState("");
-    const [showFilters, setShowFilters] = useState(false);
-    const [filters, setFilters] = useState({
+    const [searchTerm, setSearchTerm] = useState<string>("");
+    const [showFilters, setShowFilters] = useState<boolean>(false);
+    const [filters, setFilters] = useState<Filters>({
         type: "",
         status: "",
         location: "",
@@ -35,21 +62,19 @@ export default function GigsPage() {
         datePosted: "",
         sortBy: "newest"
     });
-    const [loading, setLoading] = useState(false);
-    const [page, setPage] = useState(1);
+    const [loading, setLoading] = useState<boolean>(false);
+    const [page, setPage] = useState<number>(1);
 
-    // Get unique filter options from data
-    const filterOptions = useMemo(() => {
-        const types = [...new Set(allGigs.map(gig => gig.type))];
-        const statuses = [...new Set(allGigs.map(gig => gig.status))];
-        const locations = [...new Set(allGigs.map(gig => gig.location))];
-
-        return { types, statuses, locations };
-    }, []);
+    // Type the allGigs properly
+    const typedGigs = allGigs as Gig[];
 
     // Filter and sort gigs based on current filters
     const filteredGigs = useMemo(() => {
-        const filtered = allGigs.filter(gig => {
+        const filtered = typedGigs.filter(gig => {
+            // Calculate dynamic status for filtering
+            const statusInfo = calculateGigStatus(gig.postedDate, gig.deadline, gig.status) as GigStatusInfo;
+            const currentStatus = statusInfo.status;
+
             // Search term filter
             if (searchTerm && !gig.title.toLowerCase().includes(searchTerm.toLowerCase()) &&
                 !gig.description?.toLowerCase().includes(searchTerm.toLowerCase()) &&
@@ -62,8 +87,8 @@ export default function GigsPage() {
                 return false;
             }
 
-            // Status filter
-            if (filters.status && gig.status !== filters.status) {
+            // Status filter - now uses dynamic status
+            if (filters.status && currentStatus !== filters.status) {
                 return false;
             }
 
@@ -97,7 +122,6 @@ export default function GigsPage() {
                 const now = new Date();
                 const daysDiff = Math.floor((now.getTime() - gigDate.getTime()) / (1000 * 60 * 60 * 24));
 
-
                 switch (filters.datePosted) {
                     case 'today':
                         if (daysDiff > 0) return false;
@@ -114,36 +138,65 @@ export default function GigsPage() {
             return true;
         });
 
-        // Sort filtered results
+        // Apply dynamic status and sort - properly type the result
+        const gigsWithStatus = sortGigsByStatusPriority(filtered) as Gig[];
+
+        // Apply additional sorting if specified
         switch (filters.sortBy) {
             case 'newest':
-                filtered.sort((a, b) => new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime());
+                gigsWithStatus.sort((a, b) => new Date(b.postedDate).getTime() - new Date(a.postedDate).getTime());
                 break;
             case 'oldest':
-                filtered.sort((a, b) => new Date(a.postedDate).getTime() - new Date(b.postedDate).getTime());
+                gigsWithStatus.sort((a, b) => new Date(a.postedDate).getTime() - new Date(b.postedDate).getTime());
                 break;
-
             case 'pay-high':
-                filtered.sort((a, b) => {
+                gigsWithStatus.sort((a, b) => {
                     const payA = parseFloat(a.pay.replace(/[^0-9.]/g, ''));
                     const payB = parseFloat(b.pay.replace(/[^0-9.]/g, ''));
                     return payB - payA;
                 });
                 break;
             case 'pay-low':
-                filtered.sort((a, b) => {
+                gigsWithStatus.sort((a, b) => {
                     const payA = parseFloat(a.pay.replace(/[^0-9.]/g, ''));
                     const payB = parseFloat(b.pay.replace(/[^0-9.]/g, ''));
                     return payA - payB;
                 });
                 break;
             case 'title':
-                filtered.sort((a, b) => a.title.localeCompare(b.title));
+                gigsWithStatus.sort((a, b) => a.title.localeCompare(b.title));
+                break;
+            default:
+                // Keep status priority sorting as default
                 break;
         }
 
-        return filtered;
-    }, [searchTerm, filters]);
+        return gigsWithStatus;
+    }, [searchTerm, filters, typedGigs]);
+
+    // Update filterOptions to include dynamic statuses
+    const filterOptions = useMemo<FilterOptions>(() => {
+        const types = [...new Set(typedGigs.map(gig => gig.type))];
+        const locations = [...new Set(typedGigs.map(gig => gig.location))];
+
+        // Generate dynamic statuses for filter options
+        const dynamicStatuses = [...new Set(typedGigs.map(gig => {
+            const statusInfo = calculateGigStatus(gig.postedDate, gig.deadline, gig.status) as GigStatusInfo;
+            return statusInfo.status;
+        }))];
+
+        return { types, statuses: dynamicStatuses, locations };
+    }, [typedGigs]);
+
+    // Status counts for header
+    const statusCounts = useMemo<StatusCounts>(() => {
+        const counts: StatusCounts = { NEW: 0, OPEN: 0, URGENT: 0, 'CLOSING SOON': 0, CLOSED: 0 };
+        typedGigs.forEach(gig => {
+            const statusInfo = calculateGigStatus(gig.postedDate, gig.deadline, gig.status) as GigStatusInfo;
+            counts[statusInfo.status]++;
+        });
+        return counts;
+    }, [typedGigs]);
 
     // Paginated gigs based on filtered results
     const visibleGigs = useMemo(() => {
@@ -192,15 +245,20 @@ export default function GigsPage() {
                             </h1>
                             <p className="text-gray-600 text-sm flex items-center gap-2 mt-1">
                                 <Briefcase className="w-4 h-4" />
-                                {filteredGigs.length} of {allGigs.length} gigs {searchTerm || activeFiltersCount > 0 ? 'matching your criteria' : 'available'}
+                                {filteredGigs.length} of {typedGigs.length} gigs {searchTerm || activeFiltersCount > 0 ? 'matching your criteria' : 'available'}
                             </p>
                         </div>
+
+                        {/* Updated Status Counts */}
                         <div className="flex gap-4">
                             <div className="bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg">
-                                Active: <span className="font-bold">45</span>
+                                New: <span className="font-bold">{statusCounts.NEW}</span>
                             </div>
-                            <div className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg">
-                                Applied: <span className="font-bold">12</span>
+                            <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg">
+                                Urgent: <span className="font-bold">{statusCounts.URGENT}</span>
+                            </div>
+                            <div className="bg-gradient-to-r from-orange-500 to-yellow-500 text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg">
+                                Closing: <span className="font-bold">{statusCounts['CLOSING SOON']}</span>
                             </div>
                         </div>
                     </div>
@@ -445,103 +503,134 @@ export default function GigsPage() {
                         </div>
                     ) : (
                         <div className="grid gap-6">
-                            {visibleGigs.map((gig) => (
-                                <div
-                                    key={gig.id}
-                                    className="group bg-white rounded-2xl p-6 shadow-md hover:shadow-2xl transition-all duration-500 hover:scale-[1.02] border border-gray-100 relative overflow-hidden"
-                                >
-                                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 via-blue-500/0 to-transparent group-hover:from-purple-500/5 group-hover:via-blue-500/5 transition-all duration-300"></div>
+                            {visibleGigs.map((gig) => {
+                                // Add null checks and fallbacks
+                                const statusInfo = calculateGigStatus(gig.postedDate, gig.deadline, gig.status) as GigStatusInfo || {
+                                    status: 'OPEN' as const,
+                                    statusColor: 'text-blue-600 bg-blue-100',
+                                    priority: 1,
+                                    daysSincePosted: 0,
+                                    daysUntilDeadline: 30,
+                                    isActive: true
+                                };
+                                const statusStyling = getStatusStyling(statusInfo) || {
+                                    className: 'font-bold text-sm px-3 py-1 rounded-full text-blue-600 bg-blue-100',
+                                    showDot: false,
+                                    dotColor: 'bg-blue-500'
+                                };
 
-                                    <div className="flex items-center justify-between mb-4 relative z-10">
-                                        
+                                return (
+                                    <div
+                                        key={gig.id}
+                                        className={`group bg-white rounded-2xl p-6 shadow-md hover:shadow-2xl transition-all duration-500 hover:scale-[1.02] border border-gray-100 relative overflow-hidden ${statusInfo.status === 'CLOSED' ? 'opacity-70' : ''
+                                            }`}
+                                    >
+                                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/0 via-blue-500/0 to-transparent group-hover:from-purple-500/5 group-hover:via-blue-500/5 transition-all duration-300"></div>
+
+                                        <div className="flex items-center justify-between mb-4 relative z-10">
                                             <div className="flex items-center gap-3">
-                                                <span
-                                                    className={`px-3 py-1 rounded-full text-white text-sm font-medium shadow-md ${gig.typeColor}`}
-                                                >
+                                                <span className={`px-3 py-1 rounded-full text-white text-sm font-medium shadow-md ${gig.typeColor}`}>
                                                     {gig.type}
                                                 </span>
                                                 <div className="flex items-center gap-1 text-gray-500 text-sm">
                                                     <Clock className="w-4 h-4" />
                                                     {calculateTimeAgo(gig.postedDate)}
                                                 </div>
-                                        
+
+                                                {/* Show deadline info */}
+                                                {statusInfo.daysUntilDeadline >= 0 && (
+                                                    <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                                        {statusInfo.daysUntilDeadline === 0 ? 'Due today' :
+                                                            statusInfo.daysUntilDeadline === 1 ? 'Due tomorrow' :
+                                                                `${statusInfo.daysUntilDeadline} days left`}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <div className="flex items-center gap-3">
+                                                <span className={statusStyling.className}>
+                                                    {statusInfo.status}
+                                                </span>
+                                                {statusStyling.showDot && (
+                                                    <div className={`w-2 h-2 ${statusStyling.dotColor} rounded-full animate-pulse`}></div>
+                                                )}
+                                            </div>
                                         </div>
 
-                                        <div className="flex items-center gap-3">
-                                            <span className={`font-bold text-sm px-3 py-1 rounded-full ${gig.statusColor} ${gig.status === 'Open' ? 'bg-green-100' :
-                                                gig.status === 'Urgent' ? 'bg-red-100' :
-                                                    'bg-yellow-100'}`}>
-                                                {gig.status}
-                                            </span>
-                                            {gig.status === 'Urgent' && (
-                                                <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                                        <div className="mb-4">
+                                            <h3 className="font-bold text-lg text-gray-800 mb-2 group-hover:text-purple-600 transition-colors">
+                                                {gig.title}
+                                            </h3>
+                                            {gig.description && (
+                                                <p className="text-gray-600 text-sm leading-relaxed">
+                                                    {gig.description}
+                                                </p>
                                             )}
                                         </div>
-                                    </div>
 
-                                    <div className="mb-4">
-                                        <h3 className="font-bold text-lg text-gray-800 mb-2 group-hover:text-purple-600 transition-colors">
-                                            {gig.title}
-                                        </h3>
-                                        {gig.description && (
-                                            <p className="text-gray-600 text-sm leading-relaxed">
-                                                {gig.description}
-                                            </p>
+                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
+                                            <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+                                                <User className="w-4 h-4 text-purple-500" />
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Posted by</p>
+                                                    <p className="font-medium text-gray-800">{gig.postedBy}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+                                                <Clock className="w-4 h-4 text-blue-500" />
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Posted on</p>
+                                                    <p className="font-medium text-gray-800">{gig.postedDate}</p>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
+                                                <MapPin className="w-4 h-4 text-red-500" />
+                                                <div>
+                                                    <p className="text-xs text-gray-500">Location</p>
+                                                    <p className="font-medium text-gray-800">{gig.location}</p>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex items-center justify-between mb-5">
+                                            <div className="flex items-center gap-4">
+                                                <div className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-full shadow-md">
+                                                    <DollarSign className="w-4 h-4" />
+                                                    <span className="font-bold">{gig.pay}</span>
+                                                </div>
+                                                <div className="flex items-center gap-1 text-yellow-500">
+                                                    <Star className="w-4 h-4 fill-current" />
+                                                    <span className="text-sm font-medium text-gray-700">4.8</span>
+                                                    <span className="text-xs text-gray-500">(23 reviews)</span>
+                                                </div>
+                                            </div>
+                                            <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+                                                📍 2.3 km away
+                                            </div>
+                                        </div>
+                                        <Link
+                                            href={`/gigs/${gig.id}`}
+                                            className="flex items-center gap-2 text-purple-600 text-sm font-medium hover:text-purple-700 transition-colors group/btn relative z-10"
+                                            onClick={() => console.log('Navigating to gig:', gig.id, `/gigs/${gig.id}`)}
+                                        >
+                                            <Eye className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
+                                            See Details
+                                            <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
+                                        </Link>
+
+                                        {/* Status indicator bars */}
+                                        {statusInfo.status === 'URGENT' && (
+                                            <div className="absolute top-0 right-0 bg-gradient-to-l from-red-500 to-transparent h-1 w-32 animate-pulse"></div>
+                                        )}
+                                        {statusInfo.status === 'CLOSING SOON' && (
+                                            <div className="absolute top-0 right-0 bg-gradient-to-l from-orange-500 to-transparent h-1 w-32 animate-pulse"></div>
+                                        )}
+                                        {statusInfo.status === 'NEW' && (
+                                            <div className="absolute top-0 right-0 bg-gradient-to-l from-green-500 to-transparent h-1 w-32"></div>
                                         )}
                                     </div>
-
-                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-5">
-                                        <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
-                                            <User className="w-4 h-4 text-purple-500" />
-                                            <div>
-                                                <p className="text-xs text-gray-500">Posted by</p>
-                                                <p className="font-medium text-gray-800">{gig.postedBy}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
-                                            <Clock className="w-4 h-4 text-blue-500" />
-                                            <div>
-                                                <p className="text-xs text-gray-500">Posted on</p>
-                                                <p className="font-medium text-gray-800">{gig.postedDate}</p>
-                                            </div>
-                                        </div>
-                                        <div className="flex items-center gap-2 text-sm text-gray-600 bg-gray-50 rounded-lg p-3">
-                                            <MapPin className="w-4 h-4 text-red-500" />
-                                            <div>
-                                                <p className="text-xs text-gray-500">Location</p>
-                                                <p className="font-medium text-gray-800">{gig.location}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center justify-between mb-5">
-                                        <div className="flex items-center gap-4">
-                                            <div className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-4 py-2 rounded-full shadow-md">
-                                                <DollarSign className="w-4 h-4" />
-                                                <span className="font-bold">{gig.pay}</span>
-                                            </div>
-                                            <div className="flex items-center gap-1 text-yellow-500">
-                                                <Star className="w-4 h-4 fill-current" />
-                                                <span className="text-sm font-medium text-gray-700">4.8</span>
-                                                <span className="text-xs text-gray-500">(23 reviews)</span>
-                                            </div>
-                                        </div>
-                                        <div className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                                            📍 2.3 km away
-                                        </div>
-                                    </div>
-
-                                    <Link href={`/gigs/${Number(gig.id)}`} className="flex items-center gap-2 text-purple-600 text-sm font-medium hover:text-purple-700 transition-colors group/btn">
-                                        <Eye className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
-                                        See Details
-                                        <ChevronRight className="w-4 h-4 group-hover/btn:translate-x-1 transition-transform" />
-                                    </Link>
-
-                                    {gig.status === 'Urgent' && (
-                                        <div className="absolute top-0 right-0 bg-gradient-to-l from-red-500 to-transparent h-1 w-32 animate-pulse"></div>
-                                    )}
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     )}
 

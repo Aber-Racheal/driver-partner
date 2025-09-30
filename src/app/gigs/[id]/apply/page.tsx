@@ -29,6 +29,41 @@ import Button from "@/app/components/Buttons";
 import { useState, useMemo } from "react";
 
 export default function GigApplication() {
+
+        // Add these state variables at the top of your component with other useState declarations
+    
+        const [isFavorite, setIsFavorite] = useState(false);
+        const [showShareOptions, setShowShareOptions] = useState(false);
+    
+        // Add these handler functions
+        const handleShare = async () => {
+            const shareData = {
+                title: gig?.title || "Tugende Driver Partner Opportunity",
+                text: `Check out this driver partner opportunity: ${gig?.title}`,
+                url: typeof window !== "undefined" ? window.location.href : "",
+            };
+    
+            try {
+                if (navigator.share) {
+                    await navigator.share(shareData);
+                } else {
+                    await navigator.clipboard.writeText(shareData.url);
+                    alert("Link copied to clipboard! 📋");
+                }
+            } catch (err) {
+                console.error("Share failed:", err);
+                // Fallback: copy to clipboard
+                await navigator.clipboard.writeText(shareData.url);
+                alert("Link copied to clipboard! 📋");
+            }
+            setShowShareOptions(false);
+        };
+    
+        const handleFavorite = () => {
+            setIsFavorite(!isFavorite);
+            // Here you would typically save to localStorage or send to your backend
+            console.log(`${gig?.title} ${!isFavorite ? 'added to' : 'removed from'} favorites`);
+        };
     const { id } = useParams();
     const gigId = Number(id);
     const gig = gigs.find((g) => g.id === gigId);
@@ -60,7 +95,7 @@ export default function GigApplication() {
         if (!gig || !gig.deadline) return { canApply: true, status: 'open' };
         
         // Parse the deadline (format: "7th October 2025")
-        const deadline = new Date(gig.deadline);
+        const deadline = new Date(gig.deadline); // Safe parsing
         const now = new Date();
         
         if (now > deadline) {
@@ -84,24 +119,7 @@ export default function GigApplication() {
         return { canApply: true, status: 'open' };
     }, [gig]);
 
-    const handleShare = async () => {
-        const shareData = {
-            title: gig?.title || "Tugende Driver Partner Opportunity",
-            text: `Check out this driver partner opportunity: ${gig?.title}`,
-            url: typeof window !== "undefined" ? window.location.href : "",
-        };
-
-        try {
-            if (navigator.share) {
-                await navigator.share(shareData);
-            } else {
-                await navigator.clipboard.writeText(shareData.url);
-                alert("Link copied to clipboard ✅");
-            }
-        } catch (err) {
-            console.error("Share failed:", err);
-        }
-    };
+ 
 
     if (!gig) return notFound();
 
@@ -115,6 +133,7 @@ export default function GigApplication() {
         }
 
         const missingFields = Object.entries(uploads)
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
             .filter(([_, file]) => file === null)
             .map(([key]) => key);
 
@@ -184,17 +203,85 @@ export default function GigApplication() {
                                 </p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                            <button
-                                onClick={handleShare}
-                                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                            >
-                                <Share2 className="w-5 h-5 text-gray-600" />
-                            </button>
-                            <button className="p-2 hover:bg-red-50 rounded-full transition-colors group">
-                                <Heart className="w-5 h-5 text-gray-600 group-hover:text-red-500 transition-colors" />
-                            </button>
-                        </div>
+                       <div className="flex items-center gap-2">
+                                {/* Share Button with Dropdown */}
+                                <div className="relative">
+                                    <button
+                                        onClick={() => setShowShareOptions(!showShareOptions)}
+                                        className="p-2 hover:bg-gray-100 rounded-full transition-colors relative"
+                                    >
+                                        <Share2 className="w-4 h-4 text-gray-600" />
+                                    </button>
+
+                                    {/* Share Options Dropdown */}
+                                    {showShareOptions && (
+                                        <div className="absolute top-12 right-0 bg-white rounded-xl shadow-lg border border-gray-200 p-3 min-w-48 z-30">
+                                            <div className="space-y-2">
+                                                <button
+                                                    onClick={handleShare}
+                                                    className="w-full flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors text-sm text-gray-700"
+                                                >
+                                                    <Share2 className="w-4 h-4" />
+                                                    Share via...
+                                                </button>
+                                                <button
+                                                    onClick={async () => {
+                                                        await navigator.clipboard.writeText(window.location.href);
+                                                        alert("Link copied to clipboard! 📋");
+                                                        setShowShareOptions(false);
+                                                    }}
+                                                    className="w-full flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg transition-colors text-sm text-gray-700"
+                                                >
+                                                    <div className="w-4 h-4 flex items-center justify-center">📋</div>
+                                                    Copy Link
+                                                </button>
+                                                {/* Social sharing options */}
+                                                <button
+                                                    onClick={() => {
+                                                        window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(`Check out this opportunity: ${gig?.title}`)}&url=${encodeURIComponent(window.location.href)}`, '_blank');
+                                                        setShowShareOptions(false);
+                                                    }}
+                                                    className="w-full flex items-center gap-3 p-2 hover:bg-blue-50 rounded-lg transition-colors text-sm text-gray-700"
+                                                >
+                                                    <div className="w-4 h-4 flex items-center justify-center text-blue-500">𝕏</div>
+                                                    Share on X
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(window.location.href)}`, '_blank');
+                                                        setShowShareOptions(false);
+                                                    }}
+                                                    className="w-full flex items-center gap-3 p-2 hover:bg-blue-50 rounded-lg transition-colors text-sm text-gray-700"
+                                                >
+                                                    <div className="w-4 h-4 flex items-center justify-center text-blue-600">f</div>
+                                                    Share on Facebook
+                                                </button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Favorite Button */}
+                                <button
+                                    onClick={handleFavorite}
+                                    className={`p-2 rounded-full transition-colors group relative ${isFavorite
+                                        ? 'bg-red-50 text-red-500'
+                                        : 'hover:bg-red-50 text-gray-600'
+                                        }`}
+                                >
+                                    <Heart
+                                        className={`w-4 h-4 transition-all ${isFavorite
+                                            ? 'fill-red-500 text-red-500 scale-110'
+                                            : 'group-hover:text-red-500'
+                                            }`}
+                                    />
+
+                                    {/* Favorite animation effect */}
+                                    {isFavorite && (
+                                        <div className="absolute inset-0 bg-red-500 rounded-full opacity-20 animate-ping"></div>
+                                    )}
+                                </button>
+                            </div>
                     </div>
                 </header>
 

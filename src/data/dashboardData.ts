@@ -52,12 +52,12 @@ export const quickCards: {
 export const services = [
   {
     id: "jobs",
-    title: "Jobs & gigs",
+    title: "Jobs & Gigs",
     description: "Find work opportunities near you",
   },
   {
     id: "fuel",
-    title: "Fuel Offers",
+    title: "Special Offers",
     description: "Discounts & Vouchers",
   },
   {
