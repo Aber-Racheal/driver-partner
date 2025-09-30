@@ -21,7 +21,7 @@ import {
 import { quickCards, services } from "@/data/dashboardData";
 import { fuelOffers, garageOffers } from "@/data/offers";
 import { FuelOffer, GarageOffer } from "../types/offers";
-import { tupointsProfile, redeemedTupointsVouchers } from "@/data/tuPoints";
+import { tupointsProfile } from "@/data/tuPoints";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -154,9 +154,9 @@ export default function Dashboard() {
   };
 
   // Calculate active Tupoints vouchers
-  const activeTupointsVouchers = redeemedTupointsVouchers.filter(
-    voucher => voucher.status === 'active'
-  ).length;
+  // const activeTupointsVouchers = redeemedTupointsVouchers.filter(
+  //   voucher => voucher.status === 'active'
+  // ).length;
 
   return (
     <div className="flex bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 min-h-screen">
