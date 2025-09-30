@@ -73,7 +73,7 @@ export default function Dashboard() {
   // Handle image error with proper typing
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     const target = e.target as HTMLImageElement;
-    target.src = "/images/default-offer.jpg";
+    target.src = "/media/fuel-offer.jpg";
   };
 
   // Handle Tupoints navigation
@@ -140,14 +140,14 @@ export default function Dashboard() {
       return {
         title: offer.partnerName || "Fuel Offer",
         description: offer.description,
-        image: offer.image || offer.partnerLogo || "/images/default-offer.jpg",
+        image: offer.image || offer.partnerLogo || "/media/fuel-offer.jpg",
         type: "fuel" as const,
       };
     } else {
       return {
         title: offer.garageName || "Garage Offer",
         description: offer.description,
-        image: offer.image || offer.garageLogo || "/images/default-offer.jpg",
+        image: offer.image || offer.garageLogo || "/media/garage7.jpg",
         type: "garage" as const,
       };
     }

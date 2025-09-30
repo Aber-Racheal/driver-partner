@@ -73,13 +73,13 @@ export const offers = [
     id: "offer1",
     title: "40% OFF FUEL",
     description: "Big on your next fuel purchase at Shell fuel station",
-    image: "/media/fuel-offer.png",
+    image: "/media/fuel-offer.jpg",
   },
   {
     id: "offer2",
     title: "20% OFF FUEL",
     description: "Big on your next fuel purchase at Total fuel station",
-    image: "/media/fuel-offer.png",
+    image: "/media/garage2.png",
   },
 ];
 
