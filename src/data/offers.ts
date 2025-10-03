@@ -21,6 +21,7 @@ export const riderStats: RiderStats = {
 export const fuelOffers: FuelOffer[] = [
   {
     id: "fuel-1",
+    type: "fuel", // Added type field
     category: "premium",
     isQualified: true,
     isFeatured: true,
@@ -41,10 +42,11 @@ export const fuelOffers: FuelOffer[] = [
     usageCount: 2,
     voucherCode: "SHELL15-TUG",
     locations: ["Kampala", "Entebbe", "Jinja", "Mbarara", "Gulu"],
-    image: ''
+    image: '/media/shell.png' // Fixed image path
   },
   {
     id: "fuel-2",
+    type: "fuel", // Added type field
     category: "standard",
     isQualified: true,
     partnerName: "Total Energies",
@@ -63,10 +65,11 @@ export const fuelOffers: FuelOffer[] = [
     usageCount: 0,
     voucherCode: "TOTAL10-RIDE",
     locations: ["All major towns in Uganda"],
-    image: ''
+    image: '/media/totalenegies.png' // Fixed image path
   },
   {
     id: "fuel-3",
+    type: "fuel", // Added type field
     category: "limited",
     isQualified: false,
     partnerName: "Stabex International",
@@ -85,10 +88,11 @@ export const fuelOffers: FuelOffer[] = [
     usageCount: 0,
     voucherCode: "STABEX20-ELITE",
     locations: ["Kampala Central", "Naalya", "Nsambya"],
-    image: ''
+    image: '/media/stabex.png' // Fixed image path
   },
   {
     id: "fuel-4",
+    type: "fuel", // Added type field
     category: "standard",
     isQualified: true,
     partnerName: "City Oil Uganda",
@@ -107,13 +111,14 @@ export const fuelOffers: FuelOffer[] = [
     usageCount: 1,
     voucherCode: "CITY12-FUEL",
     locations: ["Kampala", "Wakiso", "Mukono"],
-    image: ''
+    image: '/media/city-oil.jpg' // Fixed image path
   }
 ];
 
 export const garageOffers: GarageOffer[] = [
   {
     id: "garage-1",
+    type: "garage", // Added type field
     category: "premium",
     isQualified: true,
     isFeatured: true,
@@ -138,6 +143,7 @@ export const garageOffers: GarageOffer[] = [
   },
   {
     id: "garage-2",
+    type: "garage", // Added type field
     category: "standard",
     isQualified: true,
     garageName: "Speedy Repairs Center",
@@ -157,10 +163,11 @@ export const garageOffers: GarageOffer[] = [
     usageCount: 1,
     voucherCode: "SPEEDY15-FIX",
     serviceType: ["Electrical Repairs", "Tire Services", "Chain Maintenance", "Minor Repairs"],
-    image: ''
+    image: '/media/garage2.jpeg'
   },
   {
     id: "garage-3",
+    type: "garage", // Added type field
     category: "limited",
     isQualified: false,
     garageName: "Premium Bike Care",
@@ -180,10 +187,11 @@ export const garageOffers: GarageOffer[] = [
     usageCount: 0,
     voucherCode: "PREMIUM30-CARE",
     serviceType: ["Full Overhaul", "Premium Parts", "Paint Job", "Custom Modifications"],
-    image: ''
+    image: '/media/garage6.jpg'
   },
   {
     id: "garage-4",
+    type: "garage", // Added type field
     category: "standard",
     isQualified: true,
     garageName: "Community Riders Workshop",
@@ -203,7 +211,7 @@ export const garageOffers: GarageOffer[] = [
     usageCount: 0,
     voucherCode: "COMM20-RIDE",
     serviceType: ["All Mechanical Repairs", "Electrical Work", "Body Work", "Regular Maintenance"],
-    image: ''
+    image: '/media/garage8.jpg'
   }
 ];
 
@@ -236,7 +244,7 @@ export const redeemedGarageVouchers: RedeemedVoucher[] = [
   {
     id: "redeemed-garage-1",
     garageName: "Speedy Repairs Center",
-    garageLogo: "/images/speedy-repairs-logo.jpg",
+    garageLogo: "/media/garage2.jpeg", // Fixed logo path
     discount: 15,
     voucherCode: "SPEEDY15-XYZ",
     status: "active",
@@ -249,7 +257,7 @@ export const redeemedGarageVouchers: RedeemedVoucher[] = [
   {
     id: "redeemed-garage-2",
     garageName: "Boda Masters Garage",
-    garageLogo: "/images/boda-masters-logo.jpg",
+    garageLogo: "/media/garage9.jpg", // Fixed logo path
     discount: 25,
     voucherCode: "BODA25-DEF",
     status: "expired",

@@ -22,29 +22,32 @@ import {
     X,
     Star,
     ArrowLeft,
-    Flame
+    Flame,
+    ArrowRightLeft
 } from "lucide-react";
+import Link from "next/link";
 
 import { riderStats, fuelOffers, garageOffers, redeemedFuelVouchers, redeemedGarageVouchers } from "@/data/offers";
 import SearchBar from "../components/SearchBar";
 import SideBar from "../components/SideBar";
+import { ExchangeOffer } from "../types/exchange"; 
+import { exchangeOffers } from "@/data/exchange";
+
 
 export default function OffersPage() {
     const [searchQuery, setSearchQuery] = useState("");
-
+    const [offerType, setOfferType] = useState<"fuel" | "garage" | "exchange">("fuel");
     const [viewMode, setViewMode] = useState("offers");
     const [filterCategory, setFilterCategory] = useState("all");
-
-
     const [selectedOffer, setSelectedOffer] = useState<Offer | null>(null);
     const [savedVouchers, setSavedVouchers] = useState<string[]>([]);
     const [copiedCode, setCopiedCode] = useState<string | null>(null);
-    const [offerType, setOfferType] = useState<"fuel" | "garage">("fuel");
 
+    const currentOffers = offerType === "fuel" ? fuelOffers :
+        offerType === "garage" ? garageOffers :
+            exchangeOffers;
 
-
-    const currentOffers = offerType === "fuel" ? fuelOffers : garageOffers;
-    // Add these helper functions
+    // Helper functions with proper typing
     const isFuelOffer = (offer: Offer): offer is FuelOffer => {
         return (offer as FuelOffer).partnerName !== undefined;
     };
@@ -53,42 +56,51 @@ export default function OffersPage() {
         return (offer as GarageOffer).garageName !== undefined;
     };
 
+    const isExchangeOffer = (offer: Offer): offer is ExchangeOffer => {
+        return (offer as ExchangeOffer).bikeModel !== undefined;
+    };
 
-
-    // In your OffersPage component
     useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
         const claimOfferId = searchParams.get('claim');
         const viewOfferId = searchParams.get('view');
 
         if (claimOfferId) {
-            const offerToClaim = [...fuelOffers, ...garageOffers].find(
+            const offerToClaim = [...fuelOffers, ...garageOffers, ...exchangeOffers].find(
                 offer => offer.id === claimOfferId
             );
             if (offerToClaim && offerToClaim.isQualified) {
                 setSelectedOffer(offerToClaim);
                 setViewMode("voucher");
-                setOfferType(isFuelOffer(offerToClaim) ? 'fuel' : 'garage');
+                if (isFuelOffer(offerToClaim)) setOfferType('fuel');
+                else if (isGarageOffer(offerToClaim)) setOfferType('garage');
+                else if (isExchangeOffer(offerToClaim)) setOfferType('exchange');
             }
         } else if (viewOfferId) {
-            const offerToView = [...fuelOffers, ...garageOffers].find(
+            const offerToView = [...fuelOffers, ...garageOffers, ...exchangeOffers].find(
                 offer => offer.id === viewOfferId
             );
             if (offerToView) {
                 setSelectedOffer(offerToView);
                 setViewMode("details");
-                setOfferType(isFuelOffer(offerToView) ? 'fuel' : 'garage');
+                if (isFuelOffer(offerToView)) setOfferType('fuel');
+                else if (isGarageOffer(offerToView)) setOfferType('garage');
+                else if (isExchangeOffer(offerToView)) setOfferType('exchange');
             }
         }
     }, []);
-    // Fix filteredOffers
+
     const filteredOffers = useMemo(() => {
         return currentOffers.filter((offer: Offer) => {
-            const searchText = offerType === "fuel" && isFuelOffer(offer)
-                ? offer.partnerName
-                : offerType === "garage" && isGarageOffer(offer)
-                    ? offer.garageName
-                    : "";
+            let searchText = "";
+            
+            if (offerType === "fuel" && isFuelOffer(offer)) {
+                searchText = offer.partnerName || "";
+            } else if (offerType === "garage" && isGarageOffer(offer)) {
+                searchText = offer.garageName || "";
+            } else if (offerType === "exchange" && isExchangeOffer(offer)) {
+                searchText = offer.bikeModel || "";
+            }
 
             const matchesSearch = searchText.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 offer.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -163,14 +175,6 @@ export default function OffersPage() {
                             </button>
                         </div>
                     </div>
-
-                    {/* Motivation Banner */}
-                    {/* <div className="bg-gradient-to-br from-blue-500 to-cyan-600 rounded-lg p-3 text-white shadow mb-4">
-                        <div className="flex items-center gap-2">
-                            <Sparkles className="w-4 h-4" />
-                            <p className="text-sm font-semibold">{randomMotivation}</p>
-                        </div>
-                    </div> */}
 
                     {/* Stats Dashboard */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-3 mb-4">
@@ -253,6 +257,19 @@ export default function OffersPage() {
                                         {garageOffers.length}
                                     </span>
                                 </button>
+                                <button
+                                    onClick={() => setOfferType("exchange")}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all w-full sm:w-auto ${offerType === "exchange"
+                                        ? "bg-gradient-to-r from-green-500 to-emerald-600 text-white shadow scale-105"
+                                        : "bg-white text-gray-700 hover:bg-gray-50 shadow"
+                                        }`}
+                                >
+                                    <ArrowRightLeft className="w-4 h-4" />
+                                    Bike Exchange
+                                    <span className="bg-white/20 px-1 py-0.5 rounded-full text-xs">
+                                        {exchangeOffers.length}
+                                    </span>
+                                </button>
                             </div>
 
                             {/* Search and Filter */}
@@ -262,7 +279,11 @@ export default function OffersPage() {
                                     <SearchBar
                                         value={searchQuery}
                                         onChange={(e) => setSearchQuery(e.target.value)}
-                                        placeholder={`Search ${offerType} offers...`}
+                                        placeholder={
+                                            offerType === "fuel" ? "Search fuel offers..." :
+                                                offerType === "garage" ? "Search garage offers..." :
+                                                    "Search bike exchange offers..."
+                                        }
                                     />
                                     {searchQuery && (
                                         <button
@@ -290,104 +311,206 @@ export default function OffersPage() {
                             </div>
 
                             {/* Offers Grid */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
-
-                                {filteredOffers.map((offer: Offer) => (
-                                    <div
-                                        key={offer.id}
-                                        className={`bg-white rounded-lg shadow overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 ${offer.isFeatured ? `ring-1 ${offerType === 'fuel' ? 'ring-purple-500' : 'ring-blue-500'}` : ""
-                                            }`}
-                                    >
-                                        {offer.isFeatured && (
-                                            <div className={`bg-gradient-to-r ${offerType === 'fuel' ? 'from-purple-600 to-pink-600' : 'from-blue-600 to-cyan-600'
-                                                } text-white text-center py-1 text-xs font-semibold`}>
-                                                ⭐ FEATURED
-                                            </div>
-                                        )}
-                                        <div className="p-3">
-                                            <div className="relative w-full h-20 mb-3 rounded-lg overflow-hidden bg-gray-100">
-                                                <Image
-                                                    src={offerType === 'fuel' ? offer.partnerLogo ?? '' : offer.garageLogo ?? ''}
-                                                    alt={offerType === 'fuel' ? offer.partnerName ?? '' : offer.garageName ?? ''}
-                                                    width={600}
-                                                    height={80}
-                                                    className="object-cover"
-                                                />
-
-                                            </div>
-
-                                            <div className="flex items-center justify-between mb-2">
-                                                <h3 className="font-bold text-sm">
-                                                    {offerType === 'fuel' && isFuelOffer(offer) ? offer.partnerName :
-                                                        offerType === 'garage' && isGarageOffer(offer) ? offer.garageName : ''}
-                                                </h3>
-                                                {offer.isQualified ? (
-                                                    <CheckCircle2 className="w-4 h-4 text-green-500" />
-                                                ) : (
-                                                    <XCircle className="w-4 h-4 text-red-500" />
-                                                )}
-                                            </div>
-
-                                            {isGarageOffer(offer) && (
-                                                <div className="flex items-center gap-1 text-xs text-gray-600 mb-2">
-                                                    <MapPin className="w-3 h-3" />
-                                                    <span>{offer.location}</span>
+                            {offerType === "exchange" ? (
+                                // Special rendering for exchange offers
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
+                                    {filteredOffers.map((offer: Offer) => (
+                                        <div
+                                            key={offer.id}
+                                            className="bg-white rounded-lg shadow overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 ring-1 ring-green-500"
+                                        >
+                                            {offer.isFeatured && (
+                                                <div className="bg-gradient-to-r from-green-600 to-emerald-600 text-white text-center py-1 text-xs font-semibold">
+                                                    ⭐ FEATURED UPGRADE
                                                 </div>
                                             )}
+                                            <div className="p-3">
+                                                <div className="relative w-full h-20 mb-3 rounded-lg overflow-hidden bg-gray-100 flex items-center justify-center">
+                                                    <ArrowRightLeft className="w-8 h-8 text-green-500" />
+                                                </div>
 
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <h3 className="font-bold text-sm">
+                                                        {isExchangeOffer(offer) ? `${offer.bikeBrand} ${offer.bikeModel}` : ''}
+                                                    </h3>
+                                                    {offer.isQualified ? (
+                                                        <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                                    ) : (
+                                                        <XCircle className="w-4 h-4 text-red-500" />
+                                                    )}
+                                                </div>
 
-                                            <p className="text-xs text-gray-600 line-clamp-2 mb-3">
-                                                {offer.description}
-                                            </p>
-
-                                            <div className={`bg-gradient-to-r ${offerType === 'fuel' ? 'from-purple-50 to-pink-50' : 'from-blue-50 to-cyan-50'
-                                                } rounded-lg p-2 mb-3`}>
-                                                <p className={`text-lg font-bold ${offerType === 'fuel' ? 'text-purple-600' : 'text-blue-600'
-                                                    } text-center`}>
-                                                    {offer.discount}% OFF
+                                                <p className="text-xs text-gray-600 line-clamp-2 mb-3">
+                                                    {offer.description}
                                                 </p>
-                                                <p className="text-xs text-gray-600 text-center mt-1">
-                                                    Save up to UGX {offer.maxSavings.toLocaleString()}
-                                                </p>
-                                            </div>
 
-                                            <div className="flex items-center gap-1 text-xs text-gray-600 mb-3">
-                                                <Calendar className="w-3 h-3" />
-                                                <span>Expires: {offer.expiryDate}</span>
-                                            </div>
+                                                <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-2 mb-3">
+                                                    <p className="text-lg font-bold text-green-600 text-center">
+                                                        {offer.discount}% OFF
+                                                    </p>
+                                                    <p className="text-xs text-gray-600 text-center mt-1">
+                                                        Save up to UGX {offer.maxSavings.toLocaleString()}
+                                                    </p>
+                                                </div>
 
-                                            <div className="flex gap-1">
-                                                <button
-                                                    onClick={() => handleViewDetails(offer)}
-                                                    className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-1.5 rounded-lg transition-all text-xs"
-                                                >
-                                                    Details
-                                                </button>
-                                                {offer.isQualified ? (
-                                                    <button
-                                                        onClick={() => handleRedeemVoucher(offer)}
-                                                        className={`flex-1 bg-gradient-to-r ${offerType === 'fuel'
-                                                            ? 'from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
-                                                            : 'from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700'
-                                                            } text-white font-semibold py-1.5 rounded-lg transition-all shadow text-xs`}
+                                                <div className="flex items-center gap-1 text-xs text-gray-600 mb-3">
+                                                    <Calendar className="w-3 h-3" />
+                                                    <span>Expires: {offer.expiryDate}</span>
+                                                </div>
+
+                                                <div className="flex gap-1">
+                                                    <Link
+                                                        href="/exchange"
+                                                        className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-1.5 rounded-lg transition-all text-xs text-center"
                                                     >
-                                                        Redeem
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        disabled
-                                                        className="flex-1 bg-gray-300 text-gray-500 font-semibold py-1.5 rounded-lg cursor-not-allowed text-xs"
-                                                    >
-                                                        Not Eligible
-                                                    </button>
-                                                )}
+                                                        View Details
+                                                    </Link>
+                                                    {offer.isQualified ? (
+                                                        <Link
+                                                            href="/exchange"
+                                                            className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-1.5 rounded-lg transition-all shadow text-xs text-center"
+                                                        >
+                                                            Learn More
+                                                        </Link>
+                                                    ) : (
+                                                        <button
+                                                            disabled
+                                                            className="flex-1 bg-gray-300 text-gray-500 font-semibold py-1.5 rounded-lg cursor-not-allowed text-xs"
+                                                        >
+                                                            Not Eligible
+                                                        </button>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                ))}
-                            </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                // Original fuel and garage offers
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 lg:gap-4">
+                                    {filteredOffers.length > 0 ? (
+                                        filteredOffers.map((offer: Offer) => (
+                                            <div
+                                                key={offer.id}
+                                                className={`bg-white rounded-lg shadow overflow-hidden transition-all hover:shadow-md hover:-translate-y-0.5 ${offer.isFeatured ? `ring-1 ${offerType === 'fuel' ? 'ring-purple-500' : 'ring-blue-500'}` : ""
+                                                    }`}
+                                            >
+                                                {offer.isFeatured && (
+                                                    <div className={`bg-gradient-to-r ${offerType === 'fuel' ? 'from-purple-600 to-pink-600' : 'from-blue-600 to-cyan-600'
+                                                        } text-white text-center py-1 text-xs font-semibold`}>
+                                                        ⭐ FEATURED
+                                                    </div>
+                                                )}
+                                                <div className="p-3">
+                                                    <div className="relative w-full h-20 mb-3 rounded-lg overflow-hidden bg-gray-100">
+                                                        <Image
+                                                            // FIXED: Added proper fallbacks for undefined properties
+                                                            src={offerType === 'fuel' 
+                                                                ? (offer as FuelOffer).partnerLogo ?? '/default-logo.png' 
+                                                                : offerType === 'garage' 
+                                                                ? (offer as GarageOffer).garageLogo ?? '/default-logo.png' 
+                                                                : '/default-logo.png'}
+                                                            alt={offerType === 'fuel' 
+                                                                ? (offer as FuelOffer).partnerName ?? 'Partner' 
+                                                                : offerType === 'garage' 
+                                                                ? (offer as GarageOffer).garageName ?? 'Garage' 
+                                                                : 'Offer'}
+                                                            width={600}
+                                                            height={80}
+                                                            className="object-cover"
+                                                        />
+                                                    </div>
 
-                            {filteredOffers.length === 0 && (
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <h3 className="font-bold text-sm">
+                                                            {offerType === 'fuel' && isFuelOffer(offer) 
+                                                                ? (offer as FuelOffer).partnerName ?? 'Partner'
+                                                                : offerType === 'garage' && isGarageOffer(offer) 
+                                                                ? (offer as GarageOffer).garageName ?? 'Garage' 
+                                                                : ''}
+                                                        </h3>
+                                                        {offer.isQualified ? (
+                                                            <CheckCircle2 className="w-4 h-4 text-green-500" />
+                                                        ) : (
+                                                            <XCircle className="w-4 h-4 text-red-500" />
+                                                        )}
+                                                    </div>
+
+                                                    {isGarageOffer(offer) && (
+                                                        <div className="flex items-center gap-1 text-xs text-gray-600 mb-2">
+                                                            <MapPin className="w-3 h-3" />
+                                                            <span>{(offer as GarageOffer).location}</span>
+                                                        </div>
+                                                    )}
+
+                                                    <p className="text-xs text-gray-600 line-clamp-2 mb-3">
+                                                        {offer.description}
+                                                    </p>
+
+                                                    <div className={`bg-gradient-to-r ${offerType === 'fuel' ? 'from-purple-50 to-pink-50' : 'from-blue-50 to-cyan-50'
+                                                        } rounded-lg p-2 mb-3`}>
+                                                        <p className={`text-lg font-bold ${offerType === 'fuel' ? 'text-purple-600' : 'text-blue-600'
+                                                            } text-center`}>
+                                                            {offer.discount}% OFF
+                                                        </p>
+                                                        <p className="text-xs text-gray-600 text-center mt-1">
+                                                            Save up to UGX {offer.maxSavings.toLocaleString()}
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-1 text-xs text-gray-600 mb-3">
+                                                        <Calendar className="w-3 h-3" />
+                                                        <span>Expires: {offer.expiryDate}</span>
+                                                    </div>
+
+                                                    <div className="flex gap-1">
+                                                        <button
+                                                            onClick={() => handleViewDetails(offer)}
+                                                            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-1.5 rounded-lg transition-all text-xs"
+                                                        >
+                                                            Details
+                                                        </button>
+                                                        {offer.isQualified ? (
+                                                            <button
+                                                                onClick={() => handleRedeemVoucher(offer)}
+                                                                className={`flex-1 bg-gradient-to-r ${offerType === 'fuel'
+                                                                    ? 'from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
+                                                                    : 'from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700'
+                                                                    } text-white font-semibold py-1.5 rounded-lg transition-all shadow text-xs`}
+                                                            >
+                                                                Redeem
+                                                            </button>
+                                                        ) : (
+                                                            <button
+                                                                disabled
+                                                                className="flex-1 bg-gray-300 text-gray-500 font-semibold py-1.5 rounded-lg cursor-not-allowed text-xs"
+                                                            >
+                                                                Not Eligible
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="col-span-full text-center py-8">
+                                            <Gift className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                                            <p className="text-gray-600 text-sm mb-2">No offers found matching your search</p>
+                                            <button
+                                                onClick={() => {
+                                                    setSearchQuery("");
+                                                    setFilterCategory("all");
+                                                }}
+                                                className="px-4 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition-all text-sm"
+                                            >
+                                                Clear Filters
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {filteredOffers.length === 0 && offerType !== "exchange" && (
                                 <div className="text-center py-8">
                                     <Gift className="w-8 h-8 text-gray-300 mx-auto mb-2" />
                                     <p className="text-gray-600 text-sm mb-2">No offers found matching your search</p>
@@ -419,8 +542,17 @@ export default function OffersPage() {
                             <div className="bg-white rounded-lg shadow p-4">
                                 <div className="relative w-full h-32 mb-4 rounded-lg overflow-hidden bg-gray-100">
                                     <Image
-                                        src={offerType === 'fuel' ? selectedOffer.partnerLogo ?? '' : selectedOffer.garageLogo ?? ''}
-                                        alt={offerType === 'fuel' ? selectedOffer.partnerName ?? '' : selectedOffer.garageName ?? ''}
+                                        // FIXED: Added proper fallbacks for undefined properties
+                                        src={offerType === 'fuel' 
+                                            ? (selectedOffer as FuelOffer).partnerLogo ?? '/default-logo.png' 
+                                            : offerType === 'garage' 
+                                            ? (selectedOffer as GarageOffer).garageLogo ?? '/default-logo.png' 
+                                            : (selectedOffer as ExchangeOffer).images?.[0] ?? '/default-logo.png'}
+                                        alt={offerType === 'fuel' 
+                                            ? (selectedOffer as FuelOffer).partnerName ?? 'Partner' 
+                                            : offerType === 'garage' 
+                                            ? (selectedOffer as GarageOffer).garageName ?? 'Garage' 
+                                            : (selectedOffer as ExchangeOffer).bikeModel ?? 'Bike'}
                                         fill
                                         className="object-cover"
                                     />
@@ -430,15 +562,23 @@ export default function OffersPage() {
                                     <div>
                                         <h2 className="text-lg font-bold mb-1">
                                             {isFuelOffer(selectedOffer)
-                                                ? selectedOffer.partnerName
+                                                ? (selectedOffer as FuelOffer).partnerName ?? 'Partner'
                                                 : isGarageOffer(selectedOffer)
-                                                    ? selectedOffer.garageName
+                                                    ? (selectedOffer as GarageOffer).garageName ?? 'Garage'
+                                                    : isExchangeOffer(selectedOffer)
+                                                    ? `${(selectedOffer as ExchangeOffer).bikeBrand} ${(selectedOffer as ExchangeOffer).bikeModel}`
                                                     : ''}
                                         </h2>
                                         {isGarageOffer(selectedOffer) && (
                                             <div className="flex items-center gap-1 text-gray-600 text-sm">
                                                 <MapPin className="w-3 h-3" />
-                                                <span>{selectedOffer.location}</span>
+                                                <span>{(selectedOffer as GarageOffer).location}</span>
+                                            </div>
+                                        )}
+                                        {isExchangeOffer(selectedOffer) && (
+                                            <div className="flex items-center gap-1 text-gray-600 text-sm">
+                                                <MapPin className="w-3 h-3" />
+                                                <span>{(selectedOffer as ExchangeOffer).location}</span>
                                             </div>
                                         )}
 
@@ -459,8 +599,9 @@ export default function OffersPage() {
                                 </div>
 
                                 <div
-                                    className={`bg-gradient-to-r ${isFuelOffer(selectedOffer) ? 'from-purple-600 to-pink-600' : 'from-blue-600 to-cyan-600'
-                                        } rounded-lg p-4 text-white text-center mb-4`}
+                                    className={`bg-gradient-to-r ${offerType === 'fuel' ? 'from-purple-600 to-pink-600' : 
+                                              offerType === 'garage' ? 'from-blue-600 to-cyan-600' : 
+                                              'from-green-600 to-emerald-600'} rounded-lg p-4 text-white text-center mb-4`}
                                 >
                                     <p className="text-2xl font-bold mb-1">{selectedOffer.discount}% OFF</p>
                                     <p className="text-sm">Save up to UGX {selectedOffer.maxSavings.toLocaleString()}</p>
@@ -470,23 +611,41 @@ export default function OffersPage() {
                                     <h3 className="text-sm font-bold mb-2 flex items-center gap-1">
                                         {isFuelOffer(selectedOffer) ? (
                                             <Fuel className="w-4 h-4 text-orange-500" />
-                                        ) : (
+                                        ) : isGarageOffer(selectedOffer) ? (
                                             <Wrench className="w-4 h-4 text-blue-500" />
+                                        ) : (
+                                            <ArrowRightLeft className="w-4 h-4 text-green-500" />
                                         )}
                                         Offer Details
                                     </h3>
                                     <p className="text-gray-700 text-sm mb-3">{selectedOffer.description}</p>
 
-                                    {isGarageOffer(selectedOffer) && selectedOffer.serviceType && (
+                                    {isGarageOffer(selectedOffer) && (selectedOffer as GarageOffer).serviceType && (
                                         <div className="bg-blue-50 rounded-lg p-2">
                                             <p className="font-semibold text-blue-900 text-xs mb-1">Services Included:</p>
                                             <div className="flex flex-wrap gap-1">
-                                                {selectedOffer.serviceType.map((service, index) => (
+                                                {(selectedOffer as GarageOffer).serviceType.map((service, index) => (
                                                     <span
                                                         key={index}
                                                         className="bg-white px-2 py-0.5 rounded text-xs font-medium text-blue-700"
                                                     >
                                                         {service}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {isExchangeOffer(selectedOffer) && (
+                                        <div className="bg-green-50 rounded-lg p-2">
+                                            <p className="font-semibold text-green-900 text-xs mb-1">Features:</p>
+                                            <div className="flex flex-wrap gap-1">
+                                                {(selectedOffer as ExchangeOffer).features.map((feature, index) => (
+                                                    <span
+                                                        key={index}
+                                                        className="bg-white px-2 py-0.5 rounded text-xs font-medium text-green-700"
+                                                    >
+                                                        {feature}
                                                     </span>
                                                 ))}
                                             </div>
@@ -503,13 +662,13 @@ export default function OffersPage() {
                                         <p className="text-gray-700 text-xs">Expires: {selectedOffer.expiryDate}</p>
                                     </div>
 
-                                    {isFuelOffer(selectedOffer) && selectedOffer.locations && (
+                                    {isFuelOffer(selectedOffer) && (selectedOffer as FuelOffer).locations && (
                                         <div className="bg-blue-50 rounded-lg p-2">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <MapPin className="w-4 h-4 text-blue-600" />
                                                 <h4 className="font-bold text-sm">Locations</h4>
                                             </div>
-                                            <p className="text-gray-700 text-xs">{selectedOffer.locations.join(', ')}</p>
+                                            <p className="text-gray-700 text-xs">{(selectedOffer as FuelOffer).locations.join(', ')}</p>
                                         </div>
                                     )}
 
@@ -522,8 +681,17 @@ export default function OffersPage() {
                                             <p className="text-gray-700 text-xs">{selectedOffer.maxRedemptions} times</p>
                                         </div>
                                     )}
-                                </div>
 
+                                    {isExchangeOffer(selectedOffer) && (
+                                        <div className="bg-green-50 rounded-lg p-2">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <Target className="w-4 h-4 text-green-600" />
+                                                <h4 className="font-bold text-sm">Delivery Time</h4>
+                                            </div>
+                                            <p className="text-gray-700 text-xs">{(selectedOffer as ExchangeOffer).deliveryTime}</p>
+                                        </div>
+                                    )}
+                                </div>
 
                                 <div className="mb-4">
                                     <h3 className="text-sm font-bold mb-2 flex items-center gap-1">
@@ -552,13 +720,21 @@ export default function OffersPage() {
                                     </button>
                                     {selectedOffer.isQualified && (
                                         <button
-                                            onClick={() => handleRedeemVoucher(selectedOffer)}
+                                            onClick={() => {
+                                                if (isExchangeOffer(selectedOffer)) {
+                                                    window.location.href = '/exchange';
+                                                } else {
+                                                    handleRedeemVoucher(selectedOffer);
+                                                }
+                                            }}
                                             className={`bg-gradient-to-r ${offerType === 'fuel'
                                                 ? 'from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
-                                                : 'from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700'
+                                                : offerType === 'garage'
+                                                ? 'from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700'
+                                                : 'from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
                                                 } text-white font-semibold py-2 rounded-lg transition-all shadow text-sm`}
                                         >
-                                            Redeem Voucher
+                                            {isExchangeOffer(selectedOffer) ? 'Learn More' : 'Redeem Voucher'}
                                         </button>
                                     )}
                                 </div>
@@ -567,7 +743,7 @@ export default function OffersPage() {
                     )}
 
                     {/* Voucher Redemption View */}
-                    {viewMode === "voucher" && selectedOffer && (
+                    {viewMode === "voucher" && selectedOffer && !isExchangeOffer(selectedOffer) && (
                         <div className="max-w-2xl mx-auto">
                             <button
                                 onClick={handleBackToOffers}
@@ -584,7 +760,9 @@ export default function OffersPage() {
                                         <Zap className="w-8 h-8 mx-auto mb-2 animate-pulse" />
                                         <h2 className="text-lg font-bold mb-1">Voucher Activated!</h2>
                                         <p className="text-purple-100 text-sm">
-                                            Show this code at {offerType === 'fuel' ? selectedOffer.partnerName : selectedOffer.garageName}
+                                            Show this code at {offerType === 'fuel' 
+                                                ? (selectedOffer as FuelOffer).partnerName ?? 'the partner' 
+                                                : (selectedOffer as GarageOffer).garageName ?? 'the garage'}
                                         </p>
                                     </div>
 
@@ -640,7 +818,7 @@ export default function OffersPage() {
                                                 <>
                                                     <li className="flex items-start gap-1">
                                                         <span className="font-bold">1.</span>
-                                                        <span>Visit any {selectedOffer.partnerName} station</span>
+                                                        <span>Visit any {(selectedOffer as FuelOffer).partnerName ?? 'partner'} station</span>
                                                     </li>
                                                     <li className="flex items-start gap-1">
                                                         <span className="font-bold">2.</span>
@@ -660,7 +838,7 @@ export default function OffersPage() {
                                                     <>
                                                         <li className="flex items-start gap-1">
                                                             <span className="font-bold">1.</span>
-                                                            <span>Visit {selectedOffer.garageName} at {selectedOffer.location}</span>
+                                                            <span>Visit {(selectedOffer as GarageOffer).garageName ?? 'the garage'} at {(selectedOffer as GarageOffer).location}</span>
                                                         </li>
                                                         <li className="flex items-start gap-1">
                                                             <span className="font-bold">2.</span>
@@ -734,14 +912,12 @@ export default function OffersPage() {
                                                                 <div className="flex items-center gap-3 mb-2 sm:mb-0">
                                                                     <div className="relative w-12 h-6 bg-gray-100 rounded overflow-hidden">
                                                                         <Image
-                                                                            src={voucher.partnerLogo ?? ''}
-                                                                            alt={voucher.partnerName ?? ''}
+                                                                            src={voucher.partnerLogo ?? '/default-logo.png'}
+                                                                            alt={voucher.partnerName ?? 'Partner'}
                                                                             width={48}
                                                                             height={24}
                                                                             className="w-full h-full object-contain"
                                                                         />
-
-
                                                                     </div>
                                                                     <div>
                                                                         <h4 className="font-bold text-sm">{voucher.partnerName}</h4>
@@ -818,13 +994,12 @@ export default function OffersPage() {
                                                                 <div className="flex items-center gap-3 mb-2 sm:mb-0">
                                                                     <div className="relative w-12 h-12 rounded overflow-hidden bg-gray-100">
                                                                         <Image
-                                                                            src={voucher.garageLogo ?? ''}
-                                                                            alt={voucher.garageName ?? ''}
+                                                                            src={voucher.garageLogo ?? '/default-logo.png'}
+                                                                            alt={voucher.garageName ?? 'Garage'}
                                                                             width={64}
                                                                             height={64}
                                                                             className="w-full h-full object-cover"
                                                                         />
-
                                                                     </div>
                                                                     <div>
                                                                         <h4 className="font-bold text-sm">{voucher.garageName}</h4>
@@ -912,10 +1087,12 @@ export default function OffersPage() {
                                         Saved for Later
                                     </h2>
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {[...fuelOffers, ...garageOffers]
+                                        {[...fuelOffers, ...garageOffers, ...exchangeOffers]
                                             .filter((offer) => savedVouchers.includes(offer.id))
                                             .map((offer) => {
-                                                const isFuel = offer.partnerName !== undefined;
+                                                const isFuel = isFuelOffer(offer);
+                                                const isGarage = isGarageOffer(offer);
+                                                const isExchange = isExchangeOffer(offer);
                                                 return (
                                                     <div
                                                         key={offer.id}
@@ -923,15 +1100,28 @@ export default function OffersPage() {
                                                     >
                                                         <div className="flex items-center justify-between mb-2">
                                                             <div className="relative w-10 h-10 rounded overflow-hidden bg-gray-100">
-                                                                <Image
-                                                                    src={isFuel ? offer.partnerLogo ?? '' : offer.garageLogo ?? ''}
-                                                                    alt={isFuel ? offer.partnerName ?? '' : offer.garageName ?? ''}
-                                                                    width={40} // width in pixels
-                                                                    height={40} // height in pixels
-                                                                    className="w-full h-full object-cover"
-                                                                />
+                                                                {isFuel ? (
+                                                                    <Image
+                                                                        src={(offer as FuelOffer).partnerLogo ?? '/default-logo.png'}
+                                                                        alt={(offer as FuelOffer).partnerName ?? 'Partner'}
+                                                                        width={40}
+                                                                        height={40}
+                                                                        className="w-full h-full object-cover"
+                                                                    />
+                                                                ) : isGarage ? (
+                                                                    <Image
+                                                                        src={(offer as GarageOffer).garageLogo ?? '/default-logo.png'}
+                                                                        alt={(offer as GarageOffer).garageName ?? 'Garage'}
+                                                                        width={40}
+                                                                        height={40}
+                                                                        className="w-full h-full object-cover"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="flex items-center justify-center h-full">
+                                                                        <ArrowRightLeft className="w-6 h-6 text-green-500" />
+                                                                    </div>
+                                                                )}
                                                             </div>
-
                                                             <button
                                                                 onClick={() => handleSaveVoucher(offer.id)}
                                                                 className="text-red-500 hover:text-red-600 text-xs font-semibold"
@@ -940,7 +1130,9 @@ export default function OffersPage() {
                                                             </button>
                                                         </div>
                                                         <h3 className="font-bold mb-1 text-xs">
-                                                            {isFuel ? offer.partnerName : offer.garageName}
+                                                            {isFuel ? (offer as FuelOffer).partnerName ?? 'Partner' :
+                                                             isGarage ? (offer as GarageOffer).garageName ?? 'Garage' :
+                                                             isExchange ? `${(offer as ExchangeOffer).bikeBrand} ${(offer as ExchangeOffer).bikeModel}` : ''}
                                                         </h3>
                                                         <p className="text-lg font-bold text-purple-600 mb-1">
                                                             {offer.discount}% OFF
@@ -951,15 +1143,23 @@ export default function OffersPage() {
                                                         <button
                                                             onClick={() => {
                                                                 setSelectedOffer(offer);
-                                                                setOfferType(isFuel ? 'fuel' : 'garage');
-                                                                handleRedeemVoucher(offer);
+                                                                if (isFuel) setOfferType('fuel');
+                                                                else if (isGarage) setOfferType('garage');
+                                                                else setOfferType('exchange');
+                                                                if (isExchange) {
+                                                                    window.location.href = '/exchange';
+                                                                } else {
+                                                                    handleRedeemVoucher(offer);
+                                                                }
                                                             }}
                                                             className={`w-full ${isFuel
                                                                 ? "bg-purple-600 hover:bg-purple-700"
-                                                                : "bg-blue-600 hover:bg-blue-700"
+                                                                : isGarage
+                                                                ? "bg-blue-600 hover:bg-blue-700"
+                                                                : "bg-green-600 hover:bg-green-700"
                                                                 } text-white font-semibold py-1.5 rounded transition-all text-xs`}
                                                         >
-                                                            Redeem Now
+                                                            {isExchange ? 'Learn More' : 'Redeem Now'}
                                                         </button>
                                                     </div>
                                                 );
@@ -976,8 +1176,7 @@ export default function OffersPage() {
                                 </h2>
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                                     <div>
-                                        <p className="text-purple-100 text-xs mb-1">
-                                            Gigs This Month</p>
+                                        <p className="text-purple-100 text-xs mb-1">Gigs This Month</p>
                                         <p className="text-xl font-bold mb-3">{riderStats.ridesThisMonth}</p>
                                         <div className="bg-white/20 backdrop-blur-sm rounded p-2">
                                             <p className="text-xs mb-1">Progress to Premium Offers</p>
