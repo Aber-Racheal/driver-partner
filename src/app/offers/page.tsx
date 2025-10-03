@@ -30,7 +30,7 @@ import Link from "next/link";
 import { riderStats, fuelOffers, garageOffers, redeemedFuelVouchers, redeemedGarageVouchers } from "@/data/offers";
 import SearchBar from "../components/SearchBar";
 import SideBar from "../components/SideBar";
-import { ExchangeOffer } from "../types/exchange"; 
+import { ExchangeOffer } from "../types/exchange";
 import { exchangeOffers } from "@/data/exchange";
 
 
@@ -48,13 +48,14 @@ export default function OffersPage() {
             exchangeOffers;
 
     // Helper functions with proper typing
-    const isFuelOffer = (offer: Offer): offer is FuelOffer => {
-        return (offer as FuelOffer).partnerName !== undefined;
-    };
-
-    const isGarageOffer = (offer: Offer): offer is GarageOffer => {
-        return (offer as GarageOffer).garageName !== undefined;
-    };
+  const isFuelOffer = (offer: Offer): offer is FuelOffer => {
+    return (offer as FuelOffer).partnerName !== undefined && 
+           (offer as FuelOffer).locations !== undefined;
+};
+  const isGarageOffer = (offer: Offer): offer is GarageOffer => {
+    return (offer as GarageOffer).garageName !== undefined && 
+           (offer as GarageOffer).serviceType !== undefined;
+};
 
     const isExchangeOffer = (offer: Offer): offer is ExchangeOffer => {
         return (offer as ExchangeOffer).bikeModel !== undefined;
@@ -93,7 +94,7 @@ export default function OffersPage() {
     const filteredOffers = useMemo(() => {
         return currentOffers.filter((offer: Offer) => {
             let searchText = "";
-            
+
             if (offerType === "fuel" && isFuelOffer(offer)) {
                 searchText = offer.partnerName || "";
             } else if (offerType === "garage" && isGarageOffer(offer)) {
@@ -405,16 +406,16 @@ export default function OffersPage() {
                                                     <div className="relative w-full h-20 mb-3 rounded-lg overflow-hidden bg-gray-100">
                                                         <Image
                                                             // FIXED: Added proper fallbacks for undefined properties
-                                                            src={offerType === 'fuel' 
-                                                                ? (offer as FuelOffer).partnerLogo ?? '/default-logo.png' 
-                                                                : offerType === 'garage' 
-                                                                ? (offer as GarageOffer).garageLogo ?? '/default-logo.png' 
-                                                                : '/default-logo.png'}
-                                                            alt={offerType === 'fuel' 
-                                                                ? (offer as FuelOffer).partnerName ?? 'Partner' 
-                                                                : offerType === 'garage' 
-                                                                ? (offer as GarageOffer).garageName ?? 'Garage' 
-                                                                : 'Offer'}
+                                                            src={offerType === 'fuel'
+                                                                ? (offer as FuelOffer).partnerLogo ?? '/default-logo.png'
+                                                                : offerType === 'garage'
+                                                                    ? (offer as GarageOffer).garageLogo ?? '/default-logo.png'
+                                                                    : '/default-logo.png'}
+                                                            alt={offerType === 'fuel'
+                                                                ? (offer as FuelOffer).partnerName ?? 'Partner'
+                                                                : offerType === 'garage'
+                                                                    ? (offer as GarageOffer).garageName ?? 'Garage'
+                                                                    : 'Offer'}
                                                             width={600}
                                                             height={80}
                                                             className="object-cover"
@@ -423,11 +424,11 @@ export default function OffersPage() {
 
                                                     <div className="flex items-center justify-between mb-2">
                                                         <h3 className="font-bold text-sm">
-                                                            {offerType === 'fuel' && isFuelOffer(offer) 
+                                                            {offerType === 'fuel' && isFuelOffer(offer)
                                                                 ? (offer as FuelOffer).partnerName ?? 'Partner'
-                                                                : offerType === 'garage' && isGarageOffer(offer) 
-                                                                ? (offer as GarageOffer).garageName ?? 'Garage' 
-                                                                : ''}
+                                                                : offerType === 'garage' && isGarageOffer(offer)
+                                                                    ? (offer as GarageOffer).garageName ?? 'Garage'
+                                                                    : ''}
                                                         </h3>
                                                         {offer.isQualified ? (
                                                             <CheckCircle2 className="w-4 h-4 text-green-500" />
@@ -543,16 +544,16 @@ export default function OffersPage() {
                                 <div className="relative w-full h-32 mb-4 rounded-lg overflow-hidden bg-gray-100">
                                     <Image
                                         // FIXED: Added proper fallbacks for undefined properties
-                                        src={offerType === 'fuel' 
-                                            ? (selectedOffer as FuelOffer).partnerLogo ?? '/default-logo.png' 
-                                            : offerType === 'garage' 
-                                            ? (selectedOffer as GarageOffer).garageLogo ?? '/default-logo.png' 
-                                            : (selectedOffer as ExchangeOffer).images?.[0] ?? '/default-logo.png'}
-                                        alt={offerType === 'fuel' 
-                                            ? (selectedOffer as FuelOffer).partnerName ?? 'Partner' 
-                                            : offerType === 'garage' 
-                                            ? (selectedOffer as GarageOffer).garageName ?? 'Garage' 
-                                            : (selectedOffer as ExchangeOffer).bikeModel ?? 'Bike'}
+                                        src={offerType === 'fuel'
+                                            ? (selectedOffer as FuelOffer).partnerLogo ?? '/default-logo.png'
+                                            : offerType === 'garage'
+                                                ? (selectedOffer as GarageOffer).garageLogo ?? '/default-logo.png'
+                                                : (selectedOffer as ExchangeOffer).images?.[0] ?? '/default-logo.png'}
+                                        alt={offerType === 'fuel'
+                                            ? (selectedOffer as FuelOffer).partnerName ?? 'Partner'
+                                            : offerType === 'garage'
+                                                ? (selectedOffer as GarageOffer).garageName ?? 'Garage'
+                                                : (selectedOffer as ExchangeOffer).bikeModel ?? 'Bike'}
                                         fill
                                         className="object-cover"
                                     />
@@ -566,8 +567,8 @@ export default function OffersPage() {
                                                 : isGarageOffer(selectedOffer)
                                                     ? (selectedOffer as GarageOffer).garageName ?? 'Garage'
                                                     : isExchangeOffer(selectedOffer)
-                                                    ? `${(selectedOffer as ExchangeOffer).bikeBrand} ${(selectedOffer as ExchangeOffer).bikeModel}`
-                                                    : ''}
+                                                        ? `${(selectedOffer as ExchangeOffer).bikeBrand} ${(selectedOffer as ExchangeOffer).bikeModel}`
+                                                        : ''}
                                         </h2>
                                         {isGarageOffer(selectedOffer) && (
                                             <div className="flex items-center gap-1 text-gray-600 text-sm">
@@ -599,9 +600,9 @@ export default function OffersPage() {
                                 </div>
 
                                 <div
-                                    className={`bg-gradient-to-r ${offerType === 'fuel' ? 'from-purple-600 to-pink-600' : 
-                                              offerType === 'garage' ? 'from-blue-600 to-cyan-600' : 
-                                              'from-green-600 to-emerald-600'} rounded-lg p-4 text-white text-center mb-4`}
+                                    className={`bg-gradient-to-r ${offerType === 'fuel' ? 'from-purple-600 to-pink-600' :
+                                        offerType === 'garage' ? 'from-blue-600 to-cyan-600' :
+                                            'from-green-600 to-emerald-600'} rounded-lg p-4 text-white text-center mb-4`}
                                 >
                                     <p className="text-2xl font-bold mb-1">{selectedOffer.discount}% OFF</p>
                                     <p className="text-sm">Save up to UGX {selectedOffer.maxSavings.toLocaleString()}</p>
@@ -619,12 +620,11 @@ export default function OffersPage() {
                                         Offer Details
                                     </h3>
                                     <p className="text-gray-700 text-sm mb-3">{selectedOffer.description}</p>
-
-                                    {isGarageOffer(selectedOffer) && (selectedOffer as GarageOffer).serviceType && (
+                                    {isGarageOffer(selectedOffer) && selectedOffer.serviceType && (
                                         <div className="bg-blue-50 rounded-lg p-2">
                                             <p className="font-semibold text-blue-900 text-xs mb-1">Services Included:</p>
                                             <div className="flex flex-wrap gap-1">
-                                                {(selectedOffer as GarageOffer).serviceType.map((service, index) => (
+                                                {selectedOffer.serviceType.map((service, index) => (
                                                     <span
                                                         key={index}
                                                         className="bg-white px-2 py-0.5 rounded text-xs font-medium text-blue-700"
@@ -662,13 +662,13 @@ export default function OffersPage() {
                                         <p className="text-gray-700 text-xs">Expires: {selectedOffer.expiryDate}</p>
                                     </div>
 
-                                    {isFuelOffer(selectedOffer) && (selectedOffer as FuelOffer).locations && (
+                                    {isFuelOffer(selectedOffer) && selectedOffer.locations && (
                                         <div className="bg-blue-50 rounded-lg p-2">
                                             <div className="flex items-center gap-2 mb-1">
                                                 <MapPin className="w-4 h-4 text-blue-600" />
                                                 <h4 className="font-bold text-sm">Locations</h4>
                                             </div>
-                                            <p className="text-gray-700 text-xs">{(selectedOffer as FuelOffer).locations.join(', ')}</p>
+                                            <p className="text-gray-700 text-xs">{selectedOffer.locations.join(', ')}</p>
                                         </div>
                                     )}
 
@@ -730,8 +730,8 @@ export default function OffersPage() {
                                             className={`bg-gradient-to-r ${offerType === 'fuel'
                                                 ? 'from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700'
                                                 : offerType === 'garage'
-                                                ? 'from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700'
-                                                : 'from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
+                                                    ? 'from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700'
+                                                    : 'from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
                                                 } text-white font-semibold py-2 rounded-lg transition-all shadow text-sm`}
                                         >
                                             {isExchangeOffer(selectedOffer) ? 'Learn More' : 'Redeem Voucher'}
@@ -760,8 +760,8 @@ export default function OffersPage() {
                                         <Zap className="w-8 h-8 mx-auto mb-2 animate-pulse" />
                                         <h2 className="text-lg font-bold mb-1">Voucher Activated!</h2>
                                         <p className="text-purple-100 text-sm">
-                                            Show this code at {offerType === 'fuel' 
-                                                ? (selectedOffer as FuelOffer).partnerName ?? 'the partner' 
+                                            Show this code at {offerType === 'fuel'
+                                                ? (selectedOffer as FuelOffer).partnerName ?? 'the partner'
                                                 : (selectedOffer as GarageOffer).garageName ?? 'the garage'}
                                         </p>
                                     </div>
@@ -1131,8 +1131,8 @@ export default function OffersPage() {
                                                         </div>
                                                         <h3 className="font-bold mb-1 text-xs">
                                                             {isFuel ? (offer as FuelOffer).partnerName ?? 'Partner' :
-                                                             isGarage ? (offer as GarageOffer).garageName ?? 'Garage' :
-                                                             isExchange ? `${(offer as ExchangeOffer).bikeBrand} ${(offer as ExchangeOffer).bikeModel}` : ''}
+                                                                isGarage ? (offer as GarageOffer).garageName ?? 'Garage' :
+                                                                    isExchange ? `${(offer as ExchangeOffer).bikeBrand} ${(offer as ExchangeOffer).bikeModel}` : ''}
                                                         </h3>
                                                         <p className="text-lg font-bold text-purple-600 mb-1">
                                                             {offer.discount}% OFF
@@ -1155,8 +1155,8 @@ export default function OffersPage() {
                                                             className={`w-full ${isFuel
                                                                 ? "bg-purple-600 hover:bg-purple-700"
                                                                 : isGarage
-                                                                ? "bg-blue-600 hover:bg-blue-700"
-                                                                : "bg-green-600 hover:bg-green-700"
+                                                                    ? "bg-blue-600 hover:bg-blue-700"
+                                                                    : "bg-green-600 hover:bg-green-700"
                                                                 } text-white font-semibold py-1.5 rounded transition-all text-xs`}
                                                         >
                                                             {isExchange ? 'Learn More' : 'Redeem Now'}
