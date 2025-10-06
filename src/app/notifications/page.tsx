@@ -291,12 +291,12 @@ export default function NotificationsPage() {
                                 {notification.metadata.badge}
                               </div>
                             )}
-                            {notification.metadata.gigId && (
+                            {/* {notification.metadata.gigId && (
                               <div className="flex items-center gap-1 bg-indigo-100 text-indigo-800 px-2 py-1 rounded text-xs">
                                 <Briefcase className="w-3 h-3" />
                                 Gig #{notification.metadata.gigId}
                               </div>
-                            )}
+                            )} */}
                           </div>
                         )}
 
