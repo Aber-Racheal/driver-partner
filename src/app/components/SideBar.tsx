@@ -1,10 +1,11 @@
+// components/SideBar.tsx
 "use client";
 
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { gigs } from "@/data/gigsData";
-
+import { useNotifications } from "../contexts/NotificationsContext";
 import {
   Bell,
   Briefcase,
@@ -19,38 +20,40 @@ import { user } from "@/data/dashboardData";
 
 const SideBar = () => {
   const pathname = usePathname();
+  const { unreadCount } = useNotifications(); // Get unread count from context
 
   const navigationItems = [
-    { 
-      icon: LayoutDashboard, 
-      label: "Dashboard", 
+    {
+      icon: LayoutDashboard,
+      label: "Dashboard",
       href: "/dashboard",
-      badge: null 
+      badge: null
     },
-    { 
-      icon: Briefcase, 
-      label: "Gigs", 
+    {
+      icon: Briefcase,
+      label: "Gigs",
       href: "/gigs",
-      badge: gigs.length 
+      badge: gigs.length
     },
-    { 
-      icon: Wrench, 
-      label: "Garages/Mechanics", 
+    {
+      icon: Wrench,
+      label: "Garages/Mechanics",
       href: "/garages",
-      badge: null 
+      badge: null
     },
-    { 
-      icon: Gift, 
-      label: "Special Offers", 
+    {
+      icon: Gift,
+      label: "Special Offers",
       href: "/offers",
-      badge: "New" 
+      badge: "New"
     },
-    { 
-      icon: Bell, 
-      label: "Notifications", 
+    {
+      icon: Bell,
+      label: "Notifications",
       href: "/notifications",
-      badge: user.notifications 
+      badge: unreadCount > 0 ? unreadCount : null // Use context unreadCount
     },
+    // Removed Settings from main navigation
   ];
 
   // Function to check if a navigation item is active
@@ -130,16 +133,27 @@ const SideBar = () => {
       <div className="p-4 pt-2 border-t border-white/10">
         {/* Quick Actions */}
         <div className="space-y-1 mb-4">
-          <button className="w-full flex items-center gap-3 p-2 rounded-lg text-purple-100 hover:bg-white/10 transition-colors text-sm">
+          <Link 
+            href="/settings"
+            className={`w-full flex items-center gap-3 p-2 rounded-lg transition-colors text-sm ${
+              pathname === "/settings" 
+                ? "bg-white/15 text-white" 
+                : "text-purple-100 hover:bg-white/10"
+            }`}
+          >
             <Settings className="w-4 h-4" />
             <span>Settings</span>
-          </button>
+          </Link>
           <button className="w-full flex items-center gap-3 p-2 rounded-lg text-purple-100 hover:bg-white/10 transition-colors text-sm">
             <LogOut className="w-4 h-4" />
             <span>Logout</span>
           </button>
         </div>
       
+        {/* App Version */}
+        {/* <div className="text-center pt-2 border-t border-white/10">
+          <p className="text-purple-300 text-xs">v1.0.0</p>
+        </div> */}
       </div>
     </aside>
   );

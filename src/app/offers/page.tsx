@@ -10,7 +10,6 @@ import {
     MapPin,
     CheckCircle2,
     XCircle,
-    TrendingUp,
     Gift,
     Award,
     Copy,
@@ -22,7 +21,6 @@ import {
     X,
     Star,
     ArrowLeft,
-    Flame,
     ArrowRightLeft
 } from "lucide-react";
 import Link from "next/link";
@@ -32,7 +30,6 @@ import SearchBar from "../components/SearchBar";
 import SideBar from "../components/SideBar";
 import { ExchangeOffer } from "../types/exchange";
 import { exchangeOffers } from "@/data/exchange";
-
 
 export default function OffersPage() {
     const [searchQuery, setSearchQuery] = useState("");
@@ -48,18 +45,63 @@ export default function OffersPage() {
             exchangeOffers;
 
     // Helper functions with proper typing
-  const isFuelOffer = (offer: Offer): offer is FuelOffer => {
-    return (offer as FuelOffer).partnerName !== undefined && 
-           (offer as FuelOffer).locations !== undefined;
-};
-  const isGarageOffer = (offer: Offer): offer is GarageOffer => {
-    return (offer as GarageOffer).garageName !== undefined && 
-           (offer as GarageOffer).serviceType !== undefined;
-};
+    const isFuelOffer = (offer: Offer): offer is FuelOffer => {
+        return (offer as FuelOffer).partnerName !== undefined && 
+               (offer as FuelOffer).locations !== undefined;
+    };
+
+    const isGarageOffer = (offer: Offer): offer is GarageOffer => {
+        return (offer as GarageOffer).garageName !== undefined && 
+               (offer as GarageOffer).serviceType !== undefined;
+    };
 
     const isExchangeOffer = (offer: Offer): offer is ExchangeOffer => {
         return (offer as ExchangeOffer).bikeModel !== undefined;
     };
+
+    // REAL-TIME STATS CALCULATION
+    const realTimeStats = useMemo(() => {
+        // Calculate total savings from redeemed vouchers
+        const totalSavings = [...redeemedFuelVouchers, ...redeemedGarageVouchers]
+            .reduce((total, voucher) => total + (voucher.amountSaved || 0), 0);
+
+        // Calculate active vouchers (not expired and not used)
+        const activeVouchers = [...redeemedFuelVouchers, ...redeemedGarageVouchers]
+            .filter(voucher => voucher.status === "active").length;
+
+        // Calculate redeemed offers count
+        const redeemedOffers = [...redeemedFuelVouchers, ...redeemedGarageVouchers]
+            .filter(voucher => voucher.status === "used").length;
+
+        // Calculate qualified offers count
+        const qualifiedOffers = [...fuelOffers, ...garageOffers, ...exchangeOffers]
+            .filter(offer => offer.isQualified).length;
+
+        // Calculate available offers by type
+        const availableFuelOffers = fuelOffers.filter(offer => offer.isQualified).length;
+        const availableGarageOffers = garageOffers.filter(offer => offer.isQualified).length;
+        const availableExchangeOffers = exchangeOffers.filter(offer => offer.isQualified).length;
+
+        // Calculate potential savings from qualified offers
+        const potentialSavings = [...fuelOffers, ...garageOffers, ...exchangeOffers]
+            .filter(offer => offer.isQualified)
+            .reduce((total, offer) => total + offer.maxSavings, 0);
+
+        return {
+            totalSavings,
+            activeVouchers,
+            redeemedOffers,
+            qualifiedOffers,
+            availableFuelOffers,
+            availableGarageOffers,
+            availableExchangeOffers,
+            potentialSavings,
+            // Keep streak from original data or calculate based on user activity
+            currentStreak: riderStats.currentStreak,
+            ridesThisMonth: riderStats.ridesThisMonth,
+            ridesNeededForBonus: riderStats.ridesNeededForBonus
+        };
+    }, []);
 
     useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
@@ -177,14 +219,14 @@ export default function OffersPage() {
                         </div>
                     </div>
 
-                    {/* Stats Dashboard */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-3 mb-4">
+                    {/* REAL-TIME STATS DASHBOARD */}
+                    {/* <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-3 mb-4">
                         <div className="bg-white rounded-lg p-3 shadow border border-purple-100">
                             <div className="flex items-center justify-between">
                                 <div>
                                     <p className="text-gray-600 text-xs">Total Savings</p>
                                     <p className="text-lg font-bold text-purple-600">
-                                        {riderStats.totalSavings.toLocaleString()}
+                                        {realTimeStats.totalSavings.toLocaleString()}
                                     </p>
                                     <p className="text-xs text-gray-500 mt-1">UGX</p>
                                 </div>
@@ -196,7 +238,10 @@ export default function OffersPage() {
                                 <div>
                                     <p className="text-gray-600 text-xs">Active Vouchers</p>
                                     <p className="text-lg font-bold text-blue-600">
-                                        {riderStats.activeVouchers}
+                                        {realTimeStats.activeVouchers}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {realTimeStats.qualifiedOffers} available
                                     </p>
                                 </div>
                                 <Gift className="w-6 h-6 text-blue-500" />
@@ -207,7 +252,7 @@ export default function OffersPage() {
                                 <div>
                                     <p className="text-gray-600 text-xs">Current Streak</p>
                                     <p className="text-lg font-bold text-orange-600">
-                                        {riderStats.currentStreak}
+                                        {realTimeStats.currentStreak}
                                     </p>
                                     <p className="text-xs text-gray-500 mt-1">days</p>
                                 </div>
@@ -219,15 +264,59 @@ export default function OffersPage() {
                                 <div>
                                     <p className="text-gray-600 text-xs">Redeemed Offers</p>
                                     <p className="text-lg font-bold text-pink-600">
-                                        {riderStats.redeemedOffers}
+                                        {realTimeStats.redeemedOffers}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {realTimeStats.potentialSavings.toLocaleString()} UGX potential
                                     </p>
                                 </div>
                                 <Award className="w-6 h-6 text-pink-500" />
                             </div>
                         </div>
-                    </div>
+                    </div> */}
+
+                    {/* Additional Stats Row */}
+                    {/* <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-3 mb-6">
+                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-3 shadow border border-purple-200">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-gray-600 text-xs">Fuel Offers</p>
+                                    <p className="text-lg font-bold text-purple-600">
+                                        {realTimeStats.availableFuelOffers} / {fuelOffers.length}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">Available</p>
+                                </div>
+                                <Fuel className="w-5 h-5 text-purple-500" />
+                            </div>
+                        </div>
+                        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-3 shadow border border-blue-200">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-gray-600 text-xs">Garage Offers</p>
+                                    <p className="text-lg font-bold text-blue-600">
+                                        {realTimeStats.availableGarageOffers} / {garageOffers.length}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">Available</p>
+                                </div>
+                                <Wrench className="w-5 h-5 text-blue-500" />
+                            </div>
+                        </div>
+                        <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 shadow border border-green-200">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <p className="text-gray-600 text-xs">Exchange Offers</p>
+                                    <p className="text-lg font-bold text-green-600">
+                                        {realTimeStats.availableExchangeOffers} / {exchangeOffers.length}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">Available</p>
+                                </div>
+                                <ArrowRightLeft className="w-5 h-5 text-green-500" />
+                            </div>
+                        </div>
+                    </div> */}
 
                     {/* Main Content Area */}
+   {/* Main Content Area */}
                     {viewMode === "offers" && (
                         <>
                             {/* Offer Type Selector */}

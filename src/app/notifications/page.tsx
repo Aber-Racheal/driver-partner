@@ -22,7 +22,7 @@ import {
   Clock,
 } from "lucide-react";
 import { Notification, NotificationFilter } from "../types/notifications";
-import { initialNotifications } from "@/data/notifications";
+import { useNotifications } from "../contexts/NotificationsContext";
 import { getPriorityColor, formatTimeAgo } from "@/utils/notificationUtils";
 
 // Define the icon function in the component file
@@ -54,7 +54,18 @@ export default function NotificationsPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [filter, setFilter] = useState<NotificationFilter>("all");
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+  
+  // Use context instead of local state
+  const { 
+    notifications, 
+    unreadCount, 
+    markAsRead, 
+    markAsUnread,
+    markAllAsRead, 
+    markAllAsUnread, 
+    deleteNotification, 
+    clearAllNotifications 
+  } = useNotifications();
 
   // Filter notifications based on search and filter
   const filteredNotifications = useMemo(() => {
@@ -74,40 +85,33 @@ export default function NotificationsPage() {
     });
   }, [notifications, searchQuery, filter]);
 
-  // Toggle notification read/unread
+  // Toggle notification read/unread using context functions
   const toggleReadStatus = (id: string) => {
-    setNotifications(prev =>
-      prev.map(notification =>
-        notification.id === id ? { ...notification, read: !notification.read } : notification
-      )
-    );
+    const notification = notifications.find(n => n.id === id);
+    if (notification) {
+      if (notification.read) {
+        markAsUnread(id);
+      } else {
+        markAsRead(id);
+      }
+    }
   };
 
-  // Mark all as read
-  const markAllAsRead = () => {
-    setNotifications(prev =>
-      prev.map(notification => ({ ...notification, read: true }))
-    );
+  // Handle notification click with action
+  const handleNotificationAction = (notification: Notification) => {
+    // First toggle read status
+    if (notification.read) {
+      markAsUnread(notification.id);
+    } else {
+      markAsRead(notification.id);
+    }
+    
+    // Then navigate if there's an action
+    if (notification.action) {
+      router.push(notification.action.url);
+    }
   };
 
-  // Mark all as unread
-  const markAllAsUnread = () => {
-    setNotifications(prev =>
-      prev.map(notification => ({ ...notification, read: false }))
-    );
-  };
-
-  // Delete notification
-  const deleteNotification = (id: string) => {
-    setNotifications(prev => prev.filter(notification => notification.id !== id));
-  };
-
-  // Clear all notifications
-  const clearAllNotifications = () => {
-    setNotifications([]);
-  };
-
-  const unreadCount = notifications.filter(n => !n.read).length;
   const readCount = notifications.filter(n => n.read).length;
 
   return (
@@ -151,10 +155,11 @@ export default function NotificationsPage() {
                   <button
                     key={filterItem.key}
                     onClick={() => setFilter(filterItem.key)}
-                    className={`px-3 py-1.5 rounded-lg font-medium text-sm transition-all ${filter === filterItem.key
-                      ? "bg-purple-600 text-white shadow"
-                      : "bg-white text-gray-700 hover:bg-gray-50 shadow-sm"
-                      }`}
+                    className={`px-3 py-1.5 rounded-lg font-medium text-sm transition-all ${
+                      filter === filterItem.key
+                        ? "bg-purple-600 text-white shadow"
+                        : "bg-white text-gray-700 hover:bg-gray-50 shadow-sm"
+                    }`}
                   >
                     {filterItem.label}
                   </button>
@@ -181,13 +186,15 @@ export default function NotificationsPage() {
                   Mark All Unread
                 </button>
               )}
-              <button
-                onClick={clearAllNotifications}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors text-sm"
-              >
-                <Trash2 className="w-4 h-4" />
-                Clear All
-              </button>
+              {notifications.length > 0 && (
+                <button
+                  onClick={clearAllNotifications}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors text-sm"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Clear All
+                </button>
+              )}
             </div>
           </div>
 
@@ -207,10 +214,11 @@ export default function NotificationsPage() {
               filteredNotifications.map((notification) => (
                 <div
                   key={notification.id}
-                  className={`bg-white rounded-xl shadow-md border transition-all hover:shadow-lg ${notification.read
-                    ? 'border-gray-200 opacity-80'
-                    : 'border-purple-200 bg-purple-50/50'
-                    }`}
+                  className={`bg-white rounded-xl shadow-md border transition-all hover:shadow-lg ${
+                    notification.read
+                      ? 'border-gray-200 opacity-80'
+                      : 'border-purple-200 bg-purple-50/50'
+                  }`}
                 >
                   <div className="p-4">
                     <div className="flex items-start gap-4">
@@ -223,11 +231,16 @@ export default function NotificationsPage() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex items-center gap-2">
-                            <h3 className={`font-semibold ${notification.read ? 'text-gray-800' : 'text-gray-900'
-                              }`}>
+                            <h3 className={`font-semibold ${
+                              notification.read ? 'text-gray-800' : 'text-gray-900'
+                            }`}>
                               {notification.title}
                             </h3>
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(notification.priority)}`}>
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-xs font-medium ${getPriorityColor(
+                                notification.priority
+                              )}`}
+                            >
                               {notification.priority}
                             </span>
                           </div>
@@ -290,25 +303,29 @@ export default function NotificationsPage() {
                         {/* Actions */}
                         <div className="flex items-center gap-2">
                           <button
-                            onClick={() => {
-                              toggleReadStatus(notification.id);
-                              if (notification.action) {
-                                router.push(notification.action.url);
-                              }
-                            }}
-                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${notification.read
-                              ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                              : "bg-purple-600 text-white hover:bg-purple-700"
-                              }`}
+                            onClick={() => handleNotificationAction(notification)}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 ${
+                              notification.read
+                                ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                                : "bg-purple-600 text-white hover:bg-purple-700"
+                            }`}
                           >
                             {notification.action ? (
                               <>
-                                {notification.read ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                {notification.read ? (
+                                  <EyeOff className="w-4 h-4" />
+                                ) : (
+                                  <Eye className="w-4 h-4" />
+                                )}
                                 {notification.action.label}
                               </>
                             ) : (
                               <>
-                                {notification.read ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                                {notification.read ? (
+                                  <EyeOff className="w-4 h-4" />
+                                ) : (
+                                  <Eye className="w-4 h-4" />
+                                )}
                                 {notification.read ? "Mark Unread" : "Mark Read"}
                               </>
                             )}
@@ -317,6 +334,7 @@ export default function NotificationsPage() {
                           <button
                             onClick={() => deleteNotification(notification.id)}
                             className="p-1.5 text-gray-400 hover:text-red-500 transition-colors"
+                            title="Delete notification"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

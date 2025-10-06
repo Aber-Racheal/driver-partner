@@ -169,7 +169,7 @@ export default function ExchangePage() {
                             </div>
                             <div className="text-center">
                                 <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-                                    Bike Exchange Program
+                                    Bike Exchange Offers
                                 </h1>
                                 <p className="text-sm text-gray-600">Upgrade Your Ride, Upgrade Your Life</p>
                             </div>
