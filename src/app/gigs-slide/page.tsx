@@ -19,7 +19,7 @@ function Gigs() {
     <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-white">
       {/* Image */}
       <Image
-        src="https://via.placeholder.com/150"
+        src="/media/gigs-image.png"
         alt="gigs-image"
         width={180}
         height={180}

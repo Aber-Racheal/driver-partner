@@ -15,7 +15,7 @@ function TakeTheWheel() {
     <div className="flex flex-col items-center justify-center min-h-screen px-6 bg-white text-center">
       {/* Image */}
       <Image
-        src="https://via.placeholder.com/150"
+        src="/media/wheel-image.png"
         alt="take-the-wheel-image"
         width={180}
         height={180}
