@@ -86,16 +86,6 @@ export default function NotificationsPage() {
   }, [notifications, searchQuery, filter]);
 
   // Toggle notification read/unread using context functions
-  const toggleReadStatus = (id: string) => {
-    const notification = notifications.find(n => n.id === id);
-    if (notification) {
-      if (notification.read) {
-        markAsUnread(id);
-      } else {
-        markAsRead(id);
-      }
-    }
-  };
 
   // Handle notification click with action
   const handleNotificationAction = (notification: Notification) => {

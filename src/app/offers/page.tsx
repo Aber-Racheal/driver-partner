@@ -60,48 +60,6 @@ export default function OffersPage() {
     };
 
     // REAL-TIME STATS CALCULATION
-    const realTimeStats = useMemo(() => {
-        // Calculate total savings from redeemed vouchers
-        const totalSavings = [...redeemedFuelVouchers, ...redeemedGarageVouchers]
-            .reduce((total, voucher) => total + (voucher.amountSaved || 0), 0);
-
-        // Calculate active vouchers (not expired and not used)
-        const activeVouchers = [...redeemedFuelVouchers, ...redeemedGarageVouchers]
-            .filter(voucher => voucher.status === "active").length;
-
-        // Calculate redeemed offers count
-        const redeemedOffers = [...redeemedFuelVouchers, ...redeemedGarageVouchers]
-            .filter(voucher => voucher.status === "used").length;
-
-        // Calculate qualified offers count
-        const qualifiedOffers = [...fuelOffers, ...garageOffers, ...exchangeOffers]
-            .filter(offer => offer.isQualified).length;
-
-        // Calculate available offers by type
-        const availableFuelOffers = fuelOffers.filter(offer => offer.isQualified).length;
-        const availableGarageOffers = garageOffers.filter(offer => offer.isQualified).length;
-        const availableExchangeOffers = exchangeOffers.filter(offer => offer.isQualified).length;
-
-        // Calculate potential savings from qualified offers
-        const potentialSavings = [...fuelOffers, ...garageOffers, ...exchangeOffers]
-            .filter(offer => offer.isQualified)
-            .reduce((total, offer) => total + offer.maxSavings, 0);
-
-        return {
-            totalSavings,
-            activeVouchers,
-            redeemedOffers,
-            qualifiedOffers,
-            availableFuelOffers,
-            availableGarageOffers,
-            availableExchangeOffers,
-            potentialSavings,
-            // Keep streak from original data or calculate based on user activity
-            currentStreak: riderStats.currentStreak,
-            ridesThisMonth: riderStats.ridesThisMonth,
-            ridesNeededForBonus: riderStats.ridesNeededForBonus
-        };
-    }, []);
 
     useEffect(() => {
         const searchParams = new URLSearchParams(window.location.search);
